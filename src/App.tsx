@@ -74,7 +74,10 @@ function BlockEditor({ body, onChange }: { body: string; onChange: (next: string
   const blocks = editableBlocks(body);
   const replace = (block: (typeof blocks)[number], markdown: string) =>
     onChange(replaceEditableBlock(body, block, markdown));
-  return <div className="block-editor">
+  if (!blocks.length) return null;
+  return <details className="block-editor">
+    <summary>直观编辑要点、表格和图表 <span>{blocks.length} 项</span></summary>
+    <div className="block-editor-content">
     {blocks.map((block, blockIndex) => {
       if (block.kind === "bullet") return <label className="bullet-editor" key={blockIndex}>
         <span>要点 {blockIndex + 1}</span>
@@ -109,7 +112,8 @@ function BlockEditor({ body, onChange }: { body: string; onChange: (next: string
         </div>
       </div>;
     })}
-  </div>;
+    </div>
+  </details>;
 }
 
 export default function App() {
@@ -177,7 +181,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!active) { setPdfBlob(null); setPdfInfo(null); return; }
+    if (!active || screen === "library") { setPdfBlob(null); setPdfInfo(null); setRendering(false); return; }
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setRendering(true);
@@ -193,7 +197,7 @@ export default function App() {
         .finally(() => { if (!cancelled) setRendering(false); });
     }, 450);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [active]);
+  }, [active, screen]);
 
   const ordered = useMemo(() => [...resumes].sort((a, b) => a.fileName.localeCompare(b.fileName, "zh-CN")), [resumes]);
   const rawDocument = useMemo(() => splitRawSections(active?.markdown || ""), [active?.markdown]);
@@ -641,6 +645,7 @@ export default function App() {
             </label>
             <p>编辑内容始终会自动保留在此浏览器。开启定时保存后，未保存的简历会按间隔同步到云端；需要在本标签页填写令牌。</p>
             <p>公开内容可直接浏览。保存与删除需要此仓库 Contents 读写权限的细粒度令牌。</p>
+            <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">创建细粒度令牌 ↗</a>
             <label>个人访问令牌
               <input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="github_pat_…" autoComplete="off" />
             </label>
