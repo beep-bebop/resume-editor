@@ -12,7 +12,7 @@
 - 修改会自动成为当前浏览器的草稿。点击“保存”才会更新仓库。
 - “设置”页可选择自定义单页或固定尺寸多页。自定义单页支持宽度与固定/自动高度。
 - PDF 预览与下载使用同一份文件，可放大、缩小。
-- 排版设置包括三种快速样式、标题/正文字体、字号、行距、列表标记大小与粗细、分割线颜色与粗细、照片开关和定时云端保存。
+- 排版设置包括三种快速样式、标题/正文字体、姓名/模块/经历/正文字重、字号、行距、列表标记大小与粗细、分割线颜色与粗细、照片开关和定时云端保存。
 - “格式指南”列出 Markdown 语法对应的 PDF 元素。
 
 ### 在线保存权限
@@ -65,5 +65,7 @@ npm test
 
 PDF 中文字体使用 [Noto Sans SC](https://github.com/google/fonts/tree/main/ofl/notosanssc)
 与 [Noto Serif SC](https://github.com/google/fonts/tree/main/ofl/notoserifsc)；
+为保证 PDF 中的字重真实可调，站点使用 300/400/600/800 四档静态 TTF。
+原始可变字体保存在 `scripts/source-fonts/`，可用 `scripts/font_instances.py` 重新生成。
 许可证分别见 `public/fonts/OFL.txt` 与 `public/fonts/NotoSerifSC-OFL.txt`。
 

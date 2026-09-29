@@ -4,7 +4,7 @@ import { chartMarkdown, editableBlocks, replaceEditableBlock, tableMarkdown } fr
 import { deleteResume, listResumes, repositoryUrl, saveResume } from "./github";
 import {
   DEFAULT_SETTINGS, displayName, fileStem, joinRawSections, parseStoredMarkdown,
-  safeFileName, serializeResume, splitRawSections, type RawSection, type Resume, type Settings,
+  safeFileName, serializeResume, splitRawSections, type FontWeight, type RawSection, type Resume, type Settings,
 } from "./model";
 import { generatePdf, inspectPdf } from "./pdf";
 
@@ -68,6 +68,17 @@ function NumberControl({ label, value, min, max, step = 1, unit = "", onChange }
 
 function ColorControl({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <label className="color-control"><span>{label}</span><input type="color" value={value} onChange={(event) => onChange(event.target.value)} /><code>{value}</code></label>;
+}
+
+function WeightControl({ label, value, onChange }: { label: string; value: FontWeight; onChange: (value: FontWeight) => void }) {
+  return <label className="weight-control">{label}
+    <select value={value} onChange={(event) => onChange(Number(event.target.value) as FontWeight)}>
+      <option value={300}>细 · 300</option>
+      <option value={400}>常规 · 400</option>
+      <option value={600}>中粗 · 600</option>
+      <option value={800}>粗 · 800</option>
+    </select>
+  </label>;
 }
 
 function BlockEditor({ body, onChange }: { body: string; onChange: (next: string) => void }) {
@@ -260,16 +271,19 @@ export default function App() {
     const options: Record<typeof preset, Partial<Settings>> = {
       minimal: {
         headingFontFamily: "sans", fontFamily: "sans",
+        nameFontWeight: 600, sectionFontWeight: 600, entryFontWeight: 600, bodyFontWeight: 400,
         accentColor: "#252a30", dividerColor: "#cfd2d4",
         dividerWidth: .75, sectionGap: 12, bulletStyle: "dash",
       },
       classic: {
         headingFontFamily: "serif", fontFamily: "serif",
+        nameFontWeight: 800, sectionFontWeight: 600, entryFontWeight: 600, bodyFontWeight: 400,
         accentColor: "#314b5a", dividerColor: "#93a7af",
         dividerWidth: 1.25, sectionGap: 16, bulletStyle: "dot",
       },
       modern: {
         headingFontFamily: "sans", fontFamily: "sans",
+        nameFontWeight: 800, sectionFontWeight: 800, entryFontWeight: 600, bodyFontWeight: 400,
         accentColor: "#d75b18", dividerColor: "#d7d4ce",
         dividerWidth: 1.5, sectionGap: 13, bulletStyle: "diamond",
       },
@@ -603,6 +617,13 @@ export default function App() {
                 <NumberControl label="条目间距" value={active.settings.itemGap} min={0} max={20} unit="pt" onChange={(itemGap) => updateSettings({ itemGap })} />
                 <NumberControl label="模块间距" value={active.settings.sectionGap} min={0} max={40} unit="pt" onChange={(sectionGap) => updateSettings({ sectionGap })} />
               </div>
+              <div className="two-col weight-grid">
+                <WeightControl label="姓名字重" value={active.settings.nameFontWeight} onChange={(nameFontWeight) => updateSettings({ nameFontWeight })} />
+                <WeightControl label="模块标题字重" value={active.settings.sectionFontWeight} onChange={(sectionFontWeight) => updateSettings({ sectionFontWeight })} />
+                <WeightControl label="经历标题字重" value={active.settings.entryFontWeight} onChange={(entryFontWeight) => updateSettings({ entryFontWeight })} />
+                <WeightControl label="正文字重" value={active.settings.bodyFontWeight} onChange={(bodyFontWeight) => updateSettings({ bodyFontWeight })} />
+              </div>
+              <p className="control-hint">Markdown 中的 **加粗文字** 会使用更高一档字重。</p>
             </section>
             <section className="control-section">
               <h3>列表</h3>

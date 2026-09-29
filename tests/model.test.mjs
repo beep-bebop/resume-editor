@@ -16,13 +16,15 @@ test("settings and Markdown round-trip in one repository file", () => {
   const markdown = "# 李四\n\n## 技能\n- TypeScript";
   const resume = {
     fileName: "test.md", markdown,
-    settings: { ...DEFAULT_SETTINGS, dividerWidth: 2.5, dividerColor: "#123456" },
+    settings: { ...DEFAULT_SETTINGS, dividerWidth: 2.5, dividerColor: "#123456", bodyFontWeight: 300, nameFontWeight: 800 },
     updatedAt: 0,
   };
   const parsed = parseStoredMarkdown(serializeResume(resume));
   assert.equal(parsed.markdown, markdown);
   assert.equal(parsed.settings.dividerWidth, 2.5);
   assert.equal(parsed.settings.dividerColor, "#123456");
+  assert.equal(parsed.settings.bodyFontWeight, 300);
+  assert.equal(parsed.settings.nameFontWeight, 800);
 });
 
 test("recognizes tables and chart blocks as editable PDF content", () => {

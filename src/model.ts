@@ -1,4 +1,5 @@
 export type PdfMode = "single" | "paged";
+export type FontWeight = 300 | 400 | 600 | 800;
 
 export type Settings = {
   mode: PdfMode;
@@ -11,6 +12,10 @@ export type Settings = {
   headingFontFamily: "sans" | "serif";
   nameFontSize: number;
   sectionFontSize: number;
+  nameFontWeight: FontWeight;
+  sectionFontWeight: FontWeight;
+  entryFontWeight: FontWeight;
+  bodyFontWeight: FontWeight;
   lineHeight: number;
   itemGap: number;
   bulletStyle: "diamond" | "dot" | "dash";
@@ -55,6 +60,10 @@ export const DEFAULT_SETTINGS: Settings = {
   headingFontFamily: "sans",
   nameFontSize: 23,
   sectionFontSize: 14,
+  nameFontWeight: 800,
+  sectionFontWeight: 800,
+  entryFontWeight: 600,
+  bodyFontWeight: 400,
   lineHeight: 1.42,
   itemGap: 4,
   bulletStyle: "diamond",

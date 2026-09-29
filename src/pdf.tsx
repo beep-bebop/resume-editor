@@ -3,35 +3,34 @@ import { Circle, Document, Font, Image, Line as SvgLine, Page, Polygon, Svg, Tex
 import { PDFDocument as PdfLibDocument } from "pdf-lib";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { mmToPt, parseResume, type Line, type Resume, type Settings } from "./model";
+import { mmToPt, parseResume, type FontWeight, type Line, type Resume, type Settings } from "./model";
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 const baseUrl = window.location.origin + import.meta.env.BASE_URL;
 Font.register({
   family: "Noto Sans SC",
-  fonts: [
-    { src: baseUrl + "fonts/NotoSansSC.ttf", fontWeight: 400 },
-    { src: baseUrl + "fonts/NotoSansSC.ttf", fontWeight: 700 },
-  ],
+  fonts: ([300, 400, 600, 800] as const).map((fontWeight) => ({
+    src: baseUrl + "fonts/NotoSansSC-" + fontWeight + ".ttf", fontWeight,
+  })),
 });
 Font.register({
   family: "Noto Serif SC",
-  fonts: [
-    { src: baseUrl + "fonts/NotoSerifSC.ttf", fontWeight: 400 },
-    { src: baseUrl + "fonts/NotoSerifSC.ttf", fontWeight: 700 },
-  ],
+  fonts: ([300, 400, 600, 800] as const).map((fontWeight) => ({
+    src: baseUrl + "fonts/NotoSerifSC-" + fontWeight + ".ttf", fontWeight,
+  })),
 });
 Font.registerHyphenationCallback((word) =>
   word.match(/[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]|[^\u3400-\u9fff\u3000-\u303f\uff00-\uffef]+/g) || [word],
 );
 
-function richText(source: string) {
+function richText(source: string, settings: Settings, baseWeight: FontWeight) {
+  const strongWeight = ([300, 400, 600, 800] as FontWeight[]).find((weight) => weight > baseWeight) || 800;
   return source.split(/(\*\*.*?\*\*|\x60.*?\x60)/g).filter(Boolean).map((part, index) => {
     if (part.startsWith("**") && part.endsWith("**")) {
-      return <Text key={index} style={{ fontWeight: 700 }}>{part.slice(2, -2)}</Text>;
+      return <Text key={index} style={{ fontWeight: strongWeight, color: baseWeight === 800 ? settings.accentColor : undefined }}>{part.slice(2, -2)}</Text>;
     }
     if (part.startsWith("\x60") && part.endsWith("\x60")) {
-      return <Text key={index} style={{ color: "#9a481c" }}>{part.slice(1, -1)}</Text>;
+      return <Text key={index} style={{ color: settings.accentColor }}>{part.slice(1, -1)}</Text>;
     }
     return <Text key={index}>{part}</Text>;
   });
@@ -45,9 +44,9 @@ function PdfLine({ line, settings }: { line: Line; settings: Settings }) {
           {row.map((cell, cellIndex) => (
             <Text key={cellIndex} style={{
               flex: 1, padding: 5, fontSize: settings.fontSize * .85, lineHeight: 1.3,
-              fontWeight: rowIndex === 0 ? 700 : 400,
+              fontWeight: rowIndex === 0 ? settings.entryFontWeight : settings.bodyFontWeight,
               borderRightWidth: .6, borderBottomWidth: .6, borderColor: settings.dividerColor,
-            }}>{richText(cell)}</Text>
+            }}>{richText(cell, settings, rowIndex === 0 ? settings.entryFontWeight : settings.bodyFontWeight)}</Text>
           ))}
         </View>
       ))}
@@ -60,11 +59,11 @@ function PdfLine({ line, settings }: { line: Line; settings: Settings }) {
     return <View wrap={false} style={{ marginVertical: settings.itemGap + 4, gap: 6 }}>
       {rows.map((row, index) => (
         <View key={index} style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
-          <Text style={{ width: 85, fontSize: settings.fontSize * .85 }}>{row.label}</Text>
+          <Text style={{ width: 85, fontSize: settings.fontSize * .85, fontWeight: settings.bodyFontWeight }}>{row.label}</Text>
           <View style={{ flex: 1, height: 11, backgroundColor: "#f1eee9" }}>
             <View style={{ width: String(row.value / max * 100) + "%", height: 11, backgroundColor: settings.accentColor }} />
           </View>
-          <Text style={{ width: 38, textAlign: "right", fontSize: settings.fontSize * .85 }}>{String(row.value)}</Text>
+          <Text style={{ width: 38, textAlign: "right", fontSize: settings.fontSize * .85, fontWeight: settings.bodyFontWeight }}>{String(row.value)}</Text>
         </View>
       ))}
     </View>;
@@ -75,6 +74,7 @@ function PdfLine({ line, settings }: { line: Line; settings: Settings }) {
   const marginBottom = line.kind === "bullet" ? settings.itemGap : 2;
   const color = line.kind === "project" ? settings.accentColor : settings.textColor;
   const bulletSize = settings.bulletSize;
+  const weight = isTitle ? settings.entryFontWeight : settings.bodyFontWeight;
   return (
     <View wrap={line.kind !== "entry"} style={{
       flexDirection: "row", marginTop, marginBottom,
@@ -96,9 +96,9 @@ function PdfLine({ line, settings }: { line: Line; settings: Settings }) {
       )}
       <Text style={{
         flex: 1, fontSize: size, lineHeight: settings.lineHeight,
-        color, fontWeight: isTitle ? 700 : 400,
+        color, fontWeight: weight,
         fontFamily: isTitle ? (settings.headingFontFamily === "serif" ? "Noto Serif SC" : "Noto Sans SC") : undefined,
-      }}>{richText(line.text)}</Text>
+      }}>{richText(line.text, settings, weight)}</Text>
     </View>
   );
 }
@@ -127,7 +127,7 @@ function ResumePdf({ resume, pageHeightMm }: { resume: Resume; pageHeightMm: num
           <View style={{ flex: 1, paddingRight: 12 }}>
             <Text style={{
               fontSize: settings.nameFontSize, lineHeight: 1.1, color: settings.accentColor,
-              fontWeight: 700, marginBottom: 7,
+              fontWeight: settings.nameFontWeight, marginBottom: 7,
               fontFamily: settings.headingFontFamily === "serif" ? "Noto Serif SC" : "Noto Sans SC",
             }}>
               {content.name}
@@ -141,7 +141,7 @@ function ResumePdf({ resume, pageHeightMm }: { resume: Resume; pageHeightMm: num
         {mainSections.map((section, index) => (
           <View key={index} style={{ marginTop: index ? settings.sectionGap : 0 }}>
             <Text minPresenceAhead={settings.fontSize * 4} style={{
-              fontSize: settings.sectionFontSize, lineHeight: 1.3, fontWeight: 700,
+              fontSize: settings.sectionFontSize, lineHeight: 1.3, fontWeight: settings.sectionFontWeight,
               fontFamily: settings.headingFontFamily === "serif" ? "Noto Serif SC" : "Noto Sans SC",
               color: settings.accentColor, borderBottomColor: settings.dividerColor,
               borderBottomWidth: settings.dividerWidth, paddingBottom: 4, marginBottom: 5,
