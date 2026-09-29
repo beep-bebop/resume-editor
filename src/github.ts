@@ -92,14 +92,18 @@ export async function saveResume(resume: Resume, token: string): Promise<Resume>
 }
 
 export async function deleteResume(resume: Resume, token: string): Promise<void> {
-  if (!resume.sha) return;
   if (!token.trim()) throw new Error("请先填写 GitHub 令牌");
-  const response = await fetch(api + "/" + encodeURIComponent(resume.fileName), {
+  const url = api + "/" + encodeURIComponent(resume.fileName);
+  const currentResponse = await fetch(url + "?ref=main", { headers: headers(token), cache: "no-store" });
+  if (currentResponse.status === 404) return;
+  if (!currentResponse.ok) throw new Error("检查文件失败：" + await errorMessage(currentResponse));
+  const current = await currentResponse.json() as FileResponse;
+  const response = await fetch(url, {
     method: "DELETE",
     headers: { ...headers(token), "Content-Type": "application/json" },
     body: JSON.stringify({
       message: "Delete resume: " + resume.fileName,
-      sha: resume.sha,
+      sha: current.sha,
       branch: "main",
     }),
   });

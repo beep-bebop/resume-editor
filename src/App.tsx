@@ -403,14 +403,15 @@ export default function App() {
     setPendingDelete("");
     setBusy(true);
     try {
-      if (target.sha && key) await deleteResume(target, key);
+      if (key) await deleteResume(target, key);
       setResumes((current) => current.filter((resume) => resume.fileName !== target.fileName));
-      setActiveName(resumes.find((resume) => resume.fileName !== target.fileName)?.fileName || "");
-      setStatus(target.sha && !key
-        ? "已从本机移除「" + displayName(target) + "」。GitHub 上的同名文件仍然保留，填写令牌后可以再次删除。"
-        : "已删除「" + displayName(target) + "」。");
-    } catch (error) { setStatus("删除失败：" + (error as Error).message); }
-    finally { setBusy(false); }
+      setActiveName((name) => (name === target.fileName ? "" : name));
+      setStatus(key
+        ? "已删除「" + displayName(target) + "」，云端文件也已移除。"
+        : "已从本机移除「" + displayName(target) + "」。GitHub 上的同名文件仍然保留，填写令牌后可以再次删除。");
+    } catch (error) {
+      setStatus("删除失败：" + (error as Error).message + "（简历仍然保留，可修正后重试）");
+    } finally { setBusy(false); }
   };
 
   const importMd = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -507,11 +508,9 @@ export default function App() {
               <button className="danger" onClick={remove} disabled={!active || busy}>删除</button>
             </div>
             {pending && <div className="delete-confirm" role="alertdialog" aria-label="确认删除简历">
-              <p>删除「{displayName(pending)}」？{pending.sha && token.trim()
+              <p>删除「{displayName(pending)}」？{token.trim()
                 ? "GitHub 云端文件和本机简历库都会移除。"
-                : pending.sha
-                  ? "当前未填写令牌，只会从本机移除，GitHub 上的文件仍会保留。"
-                  : "会从本机简历库移除。"}</p>
+                : "当前未填写令牌，只会从本机移除，GitHub 上的文件仍会保留。"}</p>
               <div className="delete-confirm-actions">
                 <button className="confirm" onClick={() => void confirmRemove()} disabled={busy}>确认删除</button>
                 <button onClick={() => setPendingDelete("")} disabled={busy}>取消</button>
