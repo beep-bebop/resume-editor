@@ -111,7 +111,7 @@ function ResumePdf({ resume, pageHeightMm }: { resume: Resume; pageHeightMm: num
   const width = mmToPt(settings.widthMm);
   const height = mmToPt(pageHeightMm);
   const margin = mmToPt(settings.marginMm);
-  const photo = settings.photo || baseUrl + "photo.jpg";
+  const photo = settings.photo || "";
   return (
     <Document title={content.name + "｜简历"} author="Resume Studio">
       <Page size={[width, height]} wrap={settings.mode === "paged"} style={{

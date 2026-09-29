@@ -6,8 +6,8 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "node scripts/generate-index.mjs && vite --host 0.0.0.0",
-    "build": "node scripts/generate-index.mjs && tsc --noEmit && vite build",
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit"

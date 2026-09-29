@@ -51,6 +51,8 @@ button.subtle { border: 0; color: #bd5c22; background: transparent; padding: 5px
 .library-copy small { margin-top: 2px; color: #8d8d8d; font-size: 9px; }
 .library-item i { width: 6px; height: 6px; border-radius: 50%; background: #e88935; }
 .empty-list { padding: 8px; color: #8b8884; font-size: 11px; }
+.locked-hint { display: grid; gap: 10px; justify-items: start; max-width: 420px; padding: 12px; }
+.locked-hint p { margin: 0; line-height: 1.6; }
 .library-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 .library-actions button { padding: 5px 7px; border-color: #e9e6e1; font-size: 10px; }
 .library-actions .danger { color: #b33e35; }
@@ -163,6 +165,9 @@ button.subtle { border: 0; color: #bd5c22; background: transparent; padding: 5px
 .screen-library .library-copy b { font-size: 13px; }
 .screen-library .library-copy small { font-size: 10px; }
 .screen-library .library-actions { margin-top: 20px; gap: 8px; }
+.screen-library .locked-hint { padding: 20px; }
+.screen-library .locked-hint p { font-size: 13px; }
+.screen-library .locked-hint button { padding: 9px 14px; font-size: 12px; }
 .screen-library .library-actions button { padding: 9px 12px; font-size: 12px; }
 .screen-library .delete-confirm { margin-top: 20px; padding: 16px; }
 .screen-library .delete-confirm p { font-size: 12px; }

@@ -10,6 +10,8 @@ import { generatePdf, inspectPdf } from "./pdf";
 
 const STORAGE_KEY = "resume-studio-library-v2";
 const ACTIVE_KEY = "resume-studio-active-v2";
+const TOKEN_KEY = "resume-studio-token-v1";
+const NO_RESUMES: Resume[] = [];
 const defaultMarkdown = "# 你的姓名\n\n## 个人基本信息\n电话： ｜ 邮箱：\n求职方向：\n\n## 工作经历\n\n### 公司｜岗位｜起止时间\n- **成果：**用数字说明你完成的工作。\n\n## 教育背景\n\n### 学校｜专业｜学历\n";
 
 function readDrafts(): Resume[] {
@@ -130,7 +132,7 @@ function BlockEditor({ body, onChange }: { body: string; onChange: (next: string
 export default function App() {
   const [resumes, setResumes] = useState<Resume[]>(readDrafts);
   const [activeName, setActiveName] = useState(() => localStorage.getItem(ACTIVE_KEY) || "");
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || "");
   const [screen, setScreen] = useState<"library" | "editor" | "settings">("library");
   const [autoSaveMinutes, setAutoSaveMinutes] = useState(() => Number(localStorage.getItem("resume-studio-auto-save") || "0"));
   const [status, setStatus] = useState("正在载入简历库…");
@@ -147,11 +149,12 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const photoInput = useRef<HTMLInputElement>(null);
   const editorInput = useRef<HTMLTextAreaElement>(null);
-  const initialLoad = useRef(false);
   const resumesRef = useRef(resumes);
   const busyRef = useRef(busy);
 
-  const active = resumes.find((resume) => resume.fileName === activeName) || resumes[0] || null;
+  const unlocked = Boolean(token.trim());
+  const visible = unlocked ? resumes : NO_RESUMES;
+  const active = visible.find((resume) => resume.fileName === activeName) || visible[0] || null;
   const activeFileName = active?.fileName || "";
   const activeDirty = active ? isDirty(active) : false;
 
@@ -159,6 +162,7 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(resumes));
     resumesRef.current = resumes;
   }, [resumes]);
+  useEffect(() => { localStorage.setItem(TOKEN_KEY, token); }, [token]);
   useEffect(() => { busyRef.current = busy; }, [busy]);
   useEffect(() => { localStorage.setItem("resume-studio-auto-save", String(autoSaveMinutes)); }, [autoSaveMinutes]);
   useEffect(() => {
@@ -166,31 +170,26 @@ export default function App() {
   }, [activeFileName]);
 
   useEffect(() => {
-    if (initialLoad.current) return;
-    initialLoad.current = true;
-    void (async () => {
-      try {
-        const remote = await listResumes();
-        setResumes((current) => mergeRemote(current, remote).resumes);
-        setStatus("已载入简历库。修改会先保存在此浏览器，点击“保存”同步到云端。");
-      } catch {
+    const value = token.trim();
+    if (!value) {
+      setStatus("未设置 GitHub 令牌，简历库为空。请到「设置」填写令牌，填写后会自动读取。");
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void (async () => {
         try {
-          const manifest = await fetch(import.meta.env.BASE_URL + "resumes/index.json").then((response) => response.json()) as string[];
-          const bundled = await Promise.all(manifest.map(async (fileName) => {
-            const body = await fetch(import.meta.env.BASE_URL + "resumes/" + encodeURIComponent(fileName)).then((response) => response.text());
-            const parsed = parseStoredMarkdown(body);
-            const resume: Resume = { fileName, ...parsed, updatedAt: Date.now() };
-            resume.committedBody = serializeResume(resume);
-            return resume;
-          }));
-          setResumes((current) => mergeRemote(current, bundled).resumes);
-          setStatus("已载入站点内的简历。GitHub 暂时不可用；本机草稿仍可编辑。");
-        } catch {
-          setStatus("暂时无法读取仓库。可新建简历或导入 MD。");
+          const remote = await listResumes(value);
+          if (cancelled) return;
+          setResumes((current) => mergeRemote(current, remote).resumes);
+          setStatus("已载入简历库。修改会先保存在此浏览器，点击“保存”同步到云端。");
+        } catch (error) {
+          if (!cancelled) setStatus((error as Error).message + " 可修正令牌后点“刷新”重试。");
         }
-      }
-    })();
-  }, []);
+      })();
+    }, 600);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [token]);
 
   useEffect(() => {
     if (!active || screen === "library") { setPdfBlob(null); setPdfInfo(null); setRendering(false); return; }
@@ -211,7 +210,7 @@ export default function App() {
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [active, screen]);
 
-  const ordered = useMemo(() => [...resumes].sort((a, b) => a.fileName.localeCompare(b.fileName, "zh-CN")), [resumes]);
+  const ordered = useMemo(() => [...visible].sort((a, b) => a.fileName.localeCompare(b.fileName, "zh-CN")), [visible]);
   const pending = resumes.find((resume) => resume.fileName === pendingDelete) || null;
   const rawDocument = useMemo(() => splitRawSections(active?.markdown || ""), [active?.markdown]);
   const updateActive = (changes: Partial<Resume>) => {
@@ -294,6 +293,10 @@ export default function App() {
   };
 
   const refresh = async () => {
+    if (!token.trim()) {
+      setStatus("请先在「设置」中填写 GitHub 令牌，填写后会自动读取。");
+      return;
+    }
     setBusy(true);
     try {
       const remote = await listResumes(token);
@@ -477,7 +480,7 @@ export default function App() {
       <div className="workspace">
         <aside className={"editor-pane mobile-" + mobileTab}>
           <section className="library">
-            <div className="section-heading"><div><small>LIBRARY</small><h2>简历库 <em>{resumes.length}</em></h2></div><button className="subtle" onClick={create}>＋ 新建</button></div>
+            <div className="section-heading"><div><small>LIBRARY</small><h2>简历库 <em>{ordered.length}</em></h2></div><button className="subtle" onClick={create} disabled={!unlocked}>＋ 新建</button></div>
             <div className="library-list">
               {ordered.map((resume) => (
                 <button key={resume.fileName} className={"library-item " + (activeFileName === resume.fileName ? "selected" : "")}
@@ -488,11 +491,16 @@ export default function App() {
                   {isDirty(resume) && <i aria-label="未保存" />}
                 </button>
               ))}
-              {!resumes.length && <p className="empty-list">还没有简历。新建或导入一份 Markdown。</p>}
+              {!unlocked
+                ? <div className="empty-list locked-hint">
+                  <p>未填写 GitHub 令牌，简历库为空。简历和照片都不会读取，直到你填入令牌。</p>
+                  <button className="primary" onClick={() => setScreen("settings")}>前往设置填写令牌</button>
+                </div>
+                : !ordered.length && <p className="empty-list">还没有简历。新建或导入一份 Markdown。</p>}
             </div>
             <div className="library-actions">
               <button onClick={() => active && setScreen("editor")} disabled={!active}>编辑</button>
-              <button onClick={() => fileInput.current?.click()}>导入 MD</button>
+              <button onClick={() => fileInput.current?.click()} disabled={!unlocked}>导入 MD</button>
               <button onClick={duplicate} disabled={!active}>复制</button>
               <button onClick={rename} disabled={!active}>改标题</button>
               <button onClick={() => active && download(new Blob([serializeResume(active)], { type: "text/markdown" }), active.fileName)} disabled={!active}>下载 MD</button>
@@ -679,13 +687,13 @@ export default function App() {
                 <option value={10}>每 10 分钟</option>
               </select>
             </label>
-            <p>编辑内容始终会自动保留在此浏览器。开启定时保存后，未保存的简历会按间隔同步到云端；需要在本标签页填写令牌。</p>
-            <p>公开内容可直接浏览。保存与删除需要此仓库 Contents 读写权限的细粒度令牌。</p>
+            <p>未填写令牌时不会读取任何简历和照片，简历库保持为空。填写后会自动读取，并可按间隔把未保存的简历同步到云端。</p>
+            <p>读取、保存和删除都需要此仓库 Contents 读写权限的细粒度令牌。</p>
             <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">创建细粒度令牌 ↗</a>
             <label>个人访问令牌
               <input type="password" value={token} onChange={(event) => setToken(event.target.value)} placeholder="github_pat_…" autoComplete="off" />
             </label>
-            <p>令牌仅保留在当前网页标签页的内存中，关闭后需重新输入。</p>
+            <p>令牌保存在本机浏览器中，下次打开网页可直接读取；清除浏览器数据后需要重新填写。</p>
             <a href={repositoryUrl} target="_blank" rel="noreferrer">查看 GitHub 仓库 ↗</a>
           </section>
         </aside>

@@ -1,7 +1,8 @@
 # Resume Studio
 
-一个部署在 GitHub Pages 上的 Markdown 简历编辑器。网页直接读取仓库中的
-`public/resumes/*.md`，在浏览器中生成、预览并下载 PDF；不需要本地服务。
+一个部署在 GitHub Pages 上的 Markdown 简历编辑器。简历文本保存在私有仓库
+`beep-bebop/resume-data`，网页凭令牌通过 GitHub Contents API 读取，再在浏览器中
+生成、预览并下载 PDF；不需要本地服务。
 
 ## 在线使用
 
@@ -17,14 +18,17 @@
 
 ### 在线保存权限
 
-GitHub Pages 是静态站点，无法直接写仓库文件。保存时，网页使用 GitHub
-Contents API 向本仓库提交对应的 MD 文件。请在 GitHub 创建仅限
-`beep-bebop/resume-editor`、具有 **Contents: Read and write** 权限的细粒度个人访问令牌，
-然后将其填入“设置 → 云端保存”。令牌仅存在于当前标签页内存，刷新后需重新输入；
-不会写入仓库、localStorage 或 PDF。
+GitHub Pages 是静态站点，无法直接读写仓库文件。网页使用 GitHub Contents API
+读写私有数据仓库 `beep-bebop/resume-data` 中的 `resumes/*.md`。请在 GitHub 创建
+仅限该仓库、具有 **Contents: Read and write** 权限的细粒度个人访问令牌，然后将其
+填入“设置 → 云端保存”。
 
-公开仓库及 Pages 中的简历文字、联系方式、照片可被任何人访问。不要在简历中存储
-不打算公开的信息。
+未填写令牌时不会读取任何简历或照片，简历库保持为空；填入令牌后才会自动读取，
+并可按间隔把未保存的简历同步到云端。令牌保存在本机浏览器（localStorage），
+下次打开网页可直接读取；清除浏览器数据后需要重新填写。令牌不会写入仓库或 PDF。
+
+主仓库 `beep-bebop/resume-editor` 保持公开以发布 Pages，但已不再包含任何简历文字、
+联系方式或照片。注意早先的提交历史中仍保留过这些文件，如需彻底移除可重写历史。
 
 ### 文件格式
 

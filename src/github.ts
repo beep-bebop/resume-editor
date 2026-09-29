@@ -1,8 +1,8 @@
 import { parseStoredMarkdown, serializeResume, type Resume } from "./model";
 
 const owner = "beep-bebop";
-const repository = "resume-editor";
-const folder = "public/resumes";
+const repository = "resume-data";
+const folder = "resumes";
 const api = "https://api.github.com/repos/" + owner + "/" + repository + "/contents/" + folder;
 
 type GitHubEntry = { name: string; sha: string; download_url: string | null; type: string };
@@ -42,12 +42,12 @@ export async function listResumes(token?: string): Promise<Resume[]> {
   const entries = (await response.json() as GitHubEntry[])
     .filter((entry) => entry.type === "file" && /\.md$/i.test(entry.name));
   return Promise.all(entries.map(async (entry) => {
-    const file = await fetch(entry.download_url || api + "/" + encodeURIComponent(entry.name), {
-      headers: entry.download_url ? undefined : headers(token),
+    const file = await fetch(api + "/" + encodeURIComponent(entry.name) + "?ref=main", {
+      headers: headers(token),
       cache: "no-store",
     });
-    if (!file.ok) throw new Error("读取 " + entry.name + " 失败");
-    const body = await file.text();
+    if (!file.ok) throw new Error("读取 " + entry.name + " 失败：" + await errorMessage(file));
+    const body = decodeBase64((await file.json() as FileResponse).content);
     const parsed = parseStoredMarkdown(body);
     const resume: Resume = {
       fileName: entry.name,
