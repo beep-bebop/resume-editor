@@ -1,8 +1,8 @@
 import React from "react";
 import { Circle, Document, Font, Image, Line as SvgLine, Page, Polygon, Svg, Text, View, pdf } from "@react-pdf/renderer";
 import { PDFDocument as PdfLibDocument } from "pdf-lib";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
+import pdfWorkerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import { mmToPt, parseResume, type FontWeight, type Line, type Resume, type Settings } from "./model";
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
@@ -121,8 +121,10 @@ function ResumePdf({ resume, pageHeightMm }: { resume: Resume; pageHeightMm: num
       }}>
         <View wrap={false} style={{
           flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between",
-          borderBottomColor: settings.accentColor, borderBottomWidth: 1.5,
-          paddingBottom: 9, marginBottom: settings.sectionGap,
+          borderBottomColor: settings.accentColor,
+          borderBottomWidth: settings.showHeaderDivider ? settings.headerDividerWidth : 0,
+          paddingBottom: settings.showHeaderDivider ? settings.headerDividerGap : 0,
+          marginBottom: settings.sectionGap,
         }}>
           <View style={{ flex: 1, paddingRight: 12 }}>
             <Text style={{
@@ -144,7 +146,8 @@ function ResumePdf({ resume, pageHeightMm }: { resume: Resume; pageHeightMm: num
               fontSize: settings.sectionFontSize, lineHeight: 1.3, fontWeight: settings.sectionFontWeight,
               fontFamily: settings.headingFontFamily === "serif" ? "Noto Serif SC" : "Noto Sans SC",
               color: settings.accentColor, borderBottomColor: settings.dividerColor,
-              borderBottomWidth: settings.dividerWidth, paddingBottom: 4, marginBottom: 5,
+              borderBottomWidth: settings.showSectionDivider ? settings.dividerWidth : 0,
+              paddingBottom: settings.showSectionDivider ? 4 : 0, marginBottom: 5,
             }}>{section.title}</Text>
             {section.lines.map((line, lineIndex) => <PdfLine key={lineIndex} line={line} settings={settings} />)}
           </View>

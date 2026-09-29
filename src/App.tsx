@@ -274,19 +274,19 @@ export default function App() {
         headingFontFamily: "sans", fontFamily: "sans",
         nameFontWeight: 600, sectionFontWeight: 600, entryFontWeight: 600, bodyFontWeight: 400,
         accentColor: "#252a30", dividerColor: "#cfd2d4",
-        dividerWidth: .75, sectionGap: 12, bulletStyle: "dash",
+        dividerWidth: .75, headerDividerWidth: .75, sectionGap: 12, bulletStyle: "dash",
       },
       classic: {
         headingFontFamily: "serif", fontFamily: "serif",
         nameFontWeight: 800, sectionFontWeight: 600, entryFontWeight: 600, bodyFontWeight: 400,
         accentColor: "#314b5a", dividerColor: "#93a7af",
-        dividerWidth: 1.25, sectionGap: 16, bulletStyle: "dot",
+        dividerWidth: 1.25, headerDividerWidth: 1.25, sectionGap: 16, bulletStyle: "dot",
       },
       modern: {
         headingFontFamily: "sans", fontFamily: "sans",
         nameFontWeight: 800, sectionFontWeight: 800, entryFontWeight: 600, bodyFontWeight: 400,
         accentColor: "#d75b18", dividerColor: "#d7d4ce",
-        dividerWidth: 1.5, sectionGap: 13, bulletStyle: "diamond",
+        dividerWidth: 1.5, headerDividerWidth: 1.5, sectionGap: 13, bulletStyle: "diamond",
       },
     };
     updateSettings(options[preset]);
@@ -667,7 +667,11 @@ export default function App() {
               <ColorControl label="正文" value={active.settings.textColor} onChange={(textColor) => updateSettings({ textColor })} />
               <ColorControl label="主题" value={active.settings.accentColor} onChange={(accentColor) => updateSettings({ accentColor })} />
               <ColorControl label="模块分割线" value={active.settings.dividerColor} onChange={(dividerColor) => updateSettings({ dividerColor })} />
-              <NumberControl label="分割线粗细" value={active.settings.dividerWidth} min={0} max={5} step={.25} unit="pt" onChange={(dividerWidth) => updateSettings({ dividerWidth })} />
+              <NumberControl label="模块分割线粗细" value={active.settings.dividerWidth} min={0} max={5} step={.25} unit="pt" onChange={(dividerWidth) => updateSettings({ dividerWidth })} />
+              <label className="check-control"><input type="checkbox" checked={active.settings.showSectionDivider} onChange={(event) => updateSettings({ showSectionDivider: event.target.checked })} />显示模块分割线</label>
+              <NumberControl label="顶部横线粗细" value={active.settings.headerDividerWidth} min={0} max={5} step={.25} unit="pt" onChange={(headerDividerWidth) => updateSettings({ headerDividerWidth })} />
+              <NumberControl label="顶部横线间距" value={active.settings.headerDividerGap} min={0} max={40} unit="pt" onChange={(headerDividerGap) => updateSettings({ headerDividerGap })} />
+              <label className="check-control"><input type="checkbox" checked={active.settings.showHeaderDivider} onChange={(event) => updateSettings({ showHeaderDivider: event.target.checked })} />显示顶部横线</label>
             </section>
             <section className="control-section">
               <h3>照片</h3>

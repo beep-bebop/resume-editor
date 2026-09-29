@@ -24,6 +24,10 @@ export type Settings = {
   bulletStroke: number;
   sectionGap: number;
   dividerWidth: number;
+  showSectionDivider: boolean;
+  headerDividerWidth: number;
+  headerDividerGap: number;
+  showHeaderDivider: boolean;
   textColor: string;
   accentColor: string;
   dividerColor: string;
@@ -72,6 +76,10 @@ export const DEFAULT_SETTINGS: Settings = {
   bulletStroke: 2.5,
   sectionGap: 13,
   dividerWidth: 1,
+  showSectionDivider: true,
+  headerDividerWidth: 1.5,
+  headerDividerGap: 9,
+  showHeaderDivider: true,
   textColor: "#20242a",
   accentColor: "#d75b18",
   dividerColor: "#d7d4ce",

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { getDocument, type PDFDocumentProxy, type PDFPageProxy } from "pdfjs-dist";
+import { getDocument, type PDFDocumentProxy, type PDFPageProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
+
+type LoadedPreview = { blob: Blob; document: PDFDocumentProxy; pages: PDFPageProxy[] };
 
 function PdfPage({ page, zoom }: { page: PDFPageProxy; zoom: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -27,37 +29,33 @@ function PdfPage({ page, zoom }: { page: PDFPageProxy; zoom: number }) {
 }
 
 export default function PdfPreview({ blob, zoom }: { blob: Blob | null; zoom: number }) {
-  const [document, setDocument] = useState<PDFDocumentProxy | null>(null);
-  const [pages, setPages] = useState<PDFPageProxy[]>([]);
+  const [loaded, setLoaded] = useState<LoadedPreview | null>(null);
   useEffect(() => {
-    if (!blob) return;
+    if (!blob) { setLoaded(null); return; }
     let disposed = false;
-    let loaded: PDFDocumentProxy | null = null;
-    setPages([]);
+    let document: PDFDocumentProxy | null = null;
     void (async () => {
       const task = getDocument({ data: await blob.arrayBuffer() });
-      loaded = await task.promise;
-      if (disposed) { await loaded.destroy(); return; }
-      const nextPages = await Promise.all(
-        Array.from({ length: loaded.numPages }, (_, index) => loaded!.getPage(index + 1)),
+      document = await task.promise;
+      if (disposed) { await document.destroy(); return; }
+      const pages = await Promise.all(
+        Array.from({ length: document.numPages }, (_, index) => document!.getPage(index + 1)),
       );
-      if (!disposed) {
-        setDocument(loaded);
-        setPages(nextPages);
-      }
+      if (!disposed) setLoaded({ blob, document, pages });
     })().catch(console.error);
     return () => {
       disposed = true;
-      if (loaded) void loaded.destroy();
+      if (document) void document.destroy();
     };
   }, [blob]);
   if (!blob) return <div className="preview-empty">选择简历后，这里会显示生成的 PDF。</div>;
+  const current = loaded && loaded.blob === blob ? loaded : null;
   return (
     <div className="pdf-stack" aria-label="PDF 预览">
-      {pages.length ? pages.map((page, index) => (
+      {current && current.pages.length ? current.pages.map((page, index) => (
         <div className="pdf-page-wrap" key={index}>
           <PdfPage page={page} zoom={zoom} />
-          <span>第 {index + 1} / {document?.numPages} 页</span>
+          <span>第 {index + 1} / {current.document.numPages} 页</span>
         </div>
       )) : <div className="preview-empty">正在绘制 PDF 页面…</div>}
     </div>
