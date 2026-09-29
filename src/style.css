@@ -54,6 +54,12 @@ button.subtle { border: 0; color: #bd5c22; background: transparent; padding: 5px
 .library-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 .library-actions button { padding: 5px 7px; border-color: #e9e6e1; font-size: 10px; }
 .library-actions .danger { color: #b33e35; }
+.delete-confirm { margin-top: 9px; padding: 10px; border: 1px solid #e7c3bb; border-radius: 8px; background: #fdf4f2; }
+.delete-confirm p { margin: 0 0 8px; color: #6f4a43; font-size: 10px; line-height: 1.55; }
+.delete-confirm-actions { display: flex; gap: 6px; }
+.delete-confirm-actions button { padding: 5px 9px; font-size: 10px; }
+.delete-confirm-actions .confirm { color: white; background: #c0503f; border-color: #c0503f; }
+.delete-confirm-actions .confirm:hover:not(:disabled) { background: #a63f30; border-color: #a63f30; }
 .editor-section { min-height: 0; flex: 1; display: flex; flex-direction: column; padding: 17px 18px 18px; }
 .editor-mode { flex: 0 0 auto; margin-bottom: 11px; }
 .editor-mode button { font-size: 11px; }
@@ -158,6 +164,9 @@ button.subtle { border: 0; color: #bd5c22; background: transparent; padding: 5px
 .screen-library .library-copy small { font-size: 10px; }
 .screen-library .library-actions { margin-top: 20px; gap: 8px; }
 .screen-library .library-actions button { padding: 9px 12px; font-size: 12px; }
+.screen-library .delete-confirm { margin-top: 20px; padding: 16px; }
+.screen-library .delete-confirm p { font-size: 12px; }
+.screen-library .delete-confirm-actions button { padding: 9px 12px; font-size: 12px; }
 .screen-library .editor-section, .screen-library .preview-pane, .screen-library .style-pane { display: none; }
 .screen-editor .workspace { grid-template-columns: minmax(320px, 430px) minmax(0, 1fr); }
 .screen-editor .library, .screen-editor .style-pane { display: none; }

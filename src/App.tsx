@@ -140,6 +140,7 @@ export default function App() {
   const [pdfError, setPdfError] = useState("");
   const [rendering, setRendering] = useState(false);
   const [zoom, setZoom] = useState(0.75);
+  const [pendingDelete, setPendingDelete] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<"sections" | "markdown">("sections");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
@@ -211,6 +212,7 @@ export default function App() {
   }, [active, screen]);
 
   const ordered = useMemo(() => [...resumes].sort((a, b) => a.fileName.localeCompare(b.fileName, "zh-CN")), [resumes]);
+  const pending = resumes.find((resume) => resume.fileName === pendingDelete) || null;
   const rawDocument = useMemo(() => splitRawSections(active?.markdown || ""), [active?.markdown]);
   const updateActive = (changes: Partial<Resume>) => {
     if (!active) return;
@@ -359,8 +361,7 @@ export default function App() {
     };
     setResumes((current) => [...current, resume]);
     setActiveName(fileName);
-    setScreen("editor");
-    setStatus("已新建本机草稿。填写后点击“保存”即可跨设备访问。");
+    setStatus("已新建本机草稿，已在简历库中选中。填写后点击“保存”即可跨设备访问。");
   };
 
   const duplicate = () => {
@@ -374,8 +375,7 @@ export default function App() {
       ...active, fileName, sha: undefined, committedBody: undefined, updatedAt: Date.now(),
     }]);
     setActiveName(fileName);
-    setScreen("editor");
-    setStatus("已复制为新草稿。");
+    setStatus("已复制为新草稿，已在简历库中选中。");
   };
 
   const rename = () => {
@@ -388,21 +388,25 @@ export default function App() {
     updateActive({ markdown });
   };
 
-  const remove = async () => {
-    if (!active) return;
-    if (active.sha && !token.trim()) {
-      setScreen("settings");
-      setStatus("删除云端简历前，请先在设置中填写 GitHub 令牌。");
-      return;
-    }
-    if (!window.confirm("删除“" + active.fileName + "”？云端和本机简历库都会移除。")) return;
+  const remove = () => {
+    if (!active || busy) return;
+    setPendingDelete(active.fileName);
+  };
+
+  const confirmRemove = async () => {
+    const target = pending;
+    if (!target) { setPendingDelete(""); return; }
+    const key = token.trim();
+    setPendingDelete("");
     setBusy(true);
     try {
-      await deleteResume(active, token.trim());
-      setResumes((current) => current.filter((resume) => resume.fileName !== active.fileName));
-      setActiveName(resumes.find((resume) => resume.fileName !== active.fileName)?.fileName || "");
-      setStatus("已删除 " + active.fileName + "。");
-    } catch (error) { setStatus((error as Error).message); }
+      if (target.sha && key) await deleteResume(target, key);
+      setResumes((current) => current.filter((resume) => resume.fileName !== target.fileName));
+      setActiveName(resumes.find((resume) => resume.fileName !== target.fileName)?.fileName || "");
+      setStatus(target.sha && !key
+        ? "已从本机移除「" + displayName(target) + "」。GitHub 上的同名文件仍然保留，填写令牌后可以再次删除。"
+        : "已删除「" + displayName(target) + "」。");
+    } catch (error) { setStatus("删除失败：" + (error as Error).message); }
     finally { setBusy(false); }
   };
 
@@ -420,8 +424,7 @@ export default function App() {
     }
     setResumes((current) => [...current, ...imported]);
     if (imported[0]) setActiveName(imported[0].fileName);
-    if (imported[0]) setScreen("editor");
-    setStatus("已导入 " + imported.length + " 份 MD 到本机草稿。");
+    setStatus("已导入 " + imported.length + " 份 MD 到本机草稿，已在简历库中选中。");
     event.target.value = "";
   };
 
@@ -478,7 +481,8 @@ export default function App() {
             <div className="library-list">
               {ordered.map((resume) => (
                 <button key={resume.fileName} className={"library-item " + (activeFileName === resume.fileName ? "selected" : "")}
-                  onClick={() => { setActiveName(resume.fileName); setScreen("editor"); }}>
+                  onClick={() => setActiveName(resume.fileName)}
+                  onDoubleClick={() => { setActiveName(resume.fileName); setScreen("editor"); }}>
                   <span className="library-avatar">{displayName(resume).slice(0, 1)}</span>
                   <span className="library-copy"><b>{displayName(resume)}</b><small>{resume.fileName}</small></span>
                   {isDirty(resume) && <i aria-label="未保存" />}
@@ -487,12 +491,24 @@ export default function App() {
               {!resumes.length && <p className="empty-list">还没有简历。新建或导入一份 Markdown。</p>}
             </div>
             <div className="library-actions">
+              <button onClick={() => active && setScreen("editor")} disabled={!active}>编辑</button>
               <button onClick={() => fileInput.current?.click()}>导入 MD</button>
               <button onClick={duplicate} disabled={!active}>复制</button>
               <button onClick={rename} disabled={!active}>改标题</button>
               <button onClick={() => active && download(new Blob([serializeResume(active)], { type: "text/markdown" }), active.fileName)} disabled={!active}>下载 MD</button>
-              <button className="danger" onClick={() => void remove()} disabled={!active || busy}>删除</button>
+              <button className="danger" onClick={remove} disabled={!active || busy}>删除</button>
             </div>
+            {pending && <div className="delete-confirm" role="alertdialog" aria-label="确认删除简历">
+              <p>删除「{displayName(pending)}」？{pending.sha && token.trim()
+                ? "GitHub 云端文件和本机简历库都会移除。"
+                : pending.sha
+                  ? "当前未填写令牌，只会从本机移除，GitHub 上的文件仍会保留。"
+                  : "会从本机简历库移除。"}</p>
+              <div className="delete-confirm-actions">
+                <button className="confirm" onClick={() => void confirmRemove()} disabled={busy}>确认删除</button>
+                <button onClick={() => setPendingDelete("")} disabled={busy}>取消</button>
+              </div>
+            </div>}
           </section>
           <section className="editor-section">
             <div className="section-heading"><div><small>CONTENT</small><h2>编辑内容</h2></div><button className="subtle" onClick={() => setGuideOpen(!guideOpen)}>{guideOpen ? "收起指南" : "格式指南"}</button></div>
@@ -562,7 +578,6 @@ export default function App() {
             </div>
           </div>
           <div className="preview-scroll"><PdfPreview blob={pdfBlob} zoom={zoom} /></div>
-          <div className="status-line" role="status">{status}</div>
         </section>
         <aside className={"style-pane mobile-" + mobileTab}>
           <div className="section-heading"><div><small>DESIGN</small><h2>排版与输出</h2></div><button className="subtle" onClick={() => updateActive({ settings: { ...DEFAULT_SETTINGS } })} disabled={!active}>重置</button></div>
@@ -675,6 +690,7 @@ export default function App() {
           </section>
         </aside>
       </div>
+      <div className="status-line" role="status">{status}</div>
       <input ref={fileInput} hidden type="file" accept=".md,text/markdown" multiple onChange={(event) => void importMd(event)} />
       <input ref={photoInput} hidden type="file" accept="image/*" onChange={(event) => void changePhoto(event)} />
     </main>
