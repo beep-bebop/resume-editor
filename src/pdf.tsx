@@ -19,9 +19,25 @@ Font.register({
     src: baseUrl + "fonts/NotoSerifSC-" + fontWeight + ".ttf", fontWeight,
   })),
 });
-Font.registerHyphenationCallback((word) =>
-  word.match(/[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]|[^\u3400-\u9fff\u3000-\u303f\uff00-\uffef]+/g) || [word],
-);
+// react-pdf 按「断行单元」折行，汉字逐字拆分后标点也会单独成为一个单元，
+// 于是标点可能被挤到下一行独自成行，且换行处会被自动补一个 "-"。
+// 这里做两件事：按中文避头尾规则合并标点（标点不落行首、左括号不落行尾）；
+// 并在每个单元之后补一个空串——react-pdf 把空串当作零宽断点，换行时不补连字符
+// （原文被加粗/代码样式切成多段时，段与段之间同样需要，所以末尾也要补）。
+const CJK_PIECE = /[\u3400-\u9fff\u3000-\u303f\uff00-\uffef]|[^\u3400-\u9fff\u3000-\u303f\uff00-\uffef]+/g;
+const NO_LINE_START = /^[\u3001\u3002\u2026\u2014\u300d\u300f\u3011\u3015\u3017\u3019\u301b\u3009\u300b\uff0c\uff0e\uff1b\uff1a\uff1f\uff01\uff09\uff3d\uff5d\uff1e\u201d\u2019,.;:!?%)\]}]+$/;
+const NO_LINE_END = /^[\u300c\u300e\u3010\u3014\u3016\u3018\u301a\u3008\u300a\uff08\uff3b\uff5b\uff1c\u201c\u2018([{]+$/;
+
+Font.registerHyphenationCallback((word) => {
+  const merged: string[] = [];
+  for (const piece of word.match(CJK_PIECE) || [word]) {
+    if (!merged.length) merged.push(piece);
+    else if (NO_LINE_START.test(piece)) merged[merged.length - 1] += piece;
+    else if (NO_LINE_END.test(merged[merged.length - 1])) merged[merged.length - 1] += piece;
+    else merged.push(piece);
+  }
+  return merged.flatMap((piece) => [piece, ""]);
+});
 
 function richText(source: string, settings: Settings, baseWeight: FontWeight) {
   const strongWeight = ([300, 400, 600, 800] as FontWeight[]).find((weight) => weight > baseWeight) || 800;
