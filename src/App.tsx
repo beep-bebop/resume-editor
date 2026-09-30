@@ -52,6 +52,19 @@ function download(blob: Blob, name: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function findMatches(source: string, query: string, matchCase: boolean): number[] {
+  if (!query) return [];
+  const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), matchCase ? "g" : "gi");
+  const positions: number[] = [];
+  for (let match = pattern.exec(source); match; match = pattern.exec(source)) positions.push(match.index);
+  return positions;
+}
+
+function replaceAllMatches(source: string, query: string, replacement: string, matchCase: boolean): string {
+  const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), matchCase ? "g" : "gi");
+  return source.replace(pattern, () => replacement);
+}
+
 function NumberControl({ label, value, min, max, step = 1, unit = "", onChange }: {
   label: string; value: number; min: number; max: number; step?: number; unit?: string;
   onChange: (value: number) => void;
@@ -146,9 +159,16 @@ export default function App() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<"sections" | "markdown">("sections");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
+  const [findOpen, setFindOpen] = useState(false);
+  const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [matchCase, setMatchCase] = useState(false);
+  const [matchIndex, setMatchIndex] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const photoInput = useRef<HTMLInputElement>(null);
   const editorInput = useRef<HTMLTextAreaElement>(null);
+  const findInput = useRef<HTMLInputElement>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
   const resumesRef = useRef(resumes);
   const busyRef = useRef(busy);
 
@@ -234,6 +254,48 @@ export default function App() {
       field?.focus();
       field?.setSelectionRange(start + snippet.length, start + snippet.length);
     });
+  };
+  const matches = useMemo(
+    () => (findOpen && editorMode === "markdown" ? findMatches(active?.markdown || "", findText, matchCase) : []),
+    [findOpen, editorMode, active?.markdown, findText, matchCase],
+  );
+  const currentMatch = matches.length ? ((matchIndex % matches.length) + matches.length) % matches.length : -1;
+  const focusRange = (position: number, length: number) => {
+    const field = editorInput.current;
+    if (!field) return;
+    field.focus();
+    field.setSelectionRange(position, position + length);
+  };
+  const goToMatch = (direction: 1 | -1) => {
+    if (!matches.length) return;
+    const next = currentMatch < 0 ? 0 : (currentMatch + direction + matches.length) % matches.length;
+    setMatchIndex(next);
+    focusRange(matches[next], findText.length);
+  };
+  const openFind = (target: "find" | "replace") => {
+    if (!active) return;
+    setFindOpen(true);
+    window.requestAnimationFrame(() => {
+      const field = target === "replace" ? replaceInput.current : findInput.current;
+      field?.focus();
+      field?.select();
+    });
+  };
+  const closeFind = () => {
+    setFindOpen(false);
+    setMatchIndex(0);
+    editorInput.current?.focus();
+  };
+  const replaceCurrent = () => {
+    if (!active || !matches.length) return;
+    const position = matches[currentMatch];
+    updateActive({ markdown: active.markdown.slice(0, position) + replaceText + active.markdown.slice(position + findText.length) });
+    window.requestAnimationFrame(() => focusRange(position + replaceText.length, 0));
+  };
+  const replaceEvery = () => {
+    if (!active || !matches.length) return;
+    updateActive({ markdown: replaceAllMatches(active.markdown, findText, replaceText, matchCase) });
+    setMatchIndex(0);
   };
   const setSections = (sections: RawSection[], preamble = rawDocument.preamble) => {
     updateActive({ markdown: joinRawSections(preamble, sections) });
@@ -543,9 +605,43 @@ export default function App() {
                 <button onClick={() => insertMarkdown("\n- **要点：**描述成果\n")}>列表</button>
                 <button onClick={() => insertMarkdown("\n| 项目 | 结果 |\n|---|---|\n| 示例 | 100 |\n")}>表格</button>
                 <button onClick={() => insertMarkdown("\n:::chart\n项目 A | 80\n项目 B | 60\n:::\n")}>图表</button>
+                <button className="find-toggle" onClick={() => (findOpen ? closeFind() : openFind("find"))} disabled={!active}>{findOpen ? "收起查找" : "查找替换"}</button>
               </div>
+              {findOpen && <div className="find-bar">
+                <div className="find-row">
+                  <input ref={findInput} aria-label="查找内容" value={findText} placeholder="查找" spellCheck={false}
+                    onChange={(event) => { setFindText(event.target.value); setMatchIndex(0); }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") { event.preventDefault(); goToMatch(event.shiftKey ? -1 : 1); }
+                      else if (event.key === "Escape") { event.preventDefault(); closeFind(); }
+                    }} />
+                  <button className={"find-case" + (matchCase ? " active" : "")} title="区分大小写" aria-label="区分大小写" aria-pressed={matchCase}
+                    onClick={() => { setMatchCase(!matchCase); setMatchIndex(0); }}>Aa</button>
+                  <span className="find-count">{!findText ? "" : matches.length ? currentMatch + 1 + " / " + matches.length : "无匹配"}</span>
+                  <button className="find-step" aria-label="上一个匹配" title="上一个（Shift+Enter）" disabled={!matches.length} onClick={() => goToMatch(-1)}>↑</button>
+                  <button className="find-step" aria-label="下一个匹配" title="下一个（Enter）" disabled={!matches.length} onClick={() => goToMatch(1)}>↓</button>
+                  <button className="find-close" aria-label="关闭查找" title="关闭（Esc）" onClick={closeFind}>×</button>
+                </div>
+                <div className="find-row">
+                  <input ref={replaceInput} aria-label="替换为" value={replaceText} placeholder="替换为" spellCheck={false}
+                    onChange={(event) => setReplaceText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") { event.preventDefault(); replaceCurrent(); }
+                      else if (event.key === "Escape") { event.preventDefault(); closeFind(); }
+                    }} />
+                  <button disabled={!matches.length} onClick={replaceCurrent}>替换</button>
+                  <button disabled={!matches.length} onClick={replaceEvery}>全部替换</button>
+                </div>
+              </div>}
               <textarea ref={editorInput} aria-label="Markdown 简历正文" value={active?.markdown || ""}
                 onChange={(event) => updateActive({ markdown: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape" && findOpen) { event.preventDefault(); closeFind(); return; }
+                  if (!(event.ctrlKey || event.metaKey)) return;
+                  const key = event.key.toLowerCase();
+                  if (key === "f") { event.preventDefault(); openFind("find"); }
+                  else if (key === "h") { event.preventDefault(); openFind("replace"); }
+                }}
                 placeholder="新建或选择一份简历" spellCheck={false} disabled={!active} />
             </> : <div className="section-editor">
               {active ? <>

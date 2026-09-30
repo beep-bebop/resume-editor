@@ -78,6 +78,17 @@ button.subtle { border: 0; color: #bd5c22; background: transparent; padding: 5px
 .insert-tools { display: flex; align-items: center; gap: 5px; margin-bottom: 9px; }
 .insert-tools span { margin-right: 3px; color: #938d85; font-size: 10px; }
 .insert-tools button { padding: 5px 8px; border-color: #e9e4dd; font-size: 10px; }
+.insert-tools .find-toggle { margin-left: auto; }
+.find-bar { display: grid; gap: 4px; margin-bottom: 8px; padding: 7px 8px; border: 1px solid #e9e4dd; border-radius: 7px; background: #faf8f5; }
+.find-row { display: flex; align-items: center; gap: 4px; }
+.find-row input { min-width: 0; flex: 1; padding: 5px 7px; border: 1px solid #e0dcd5; border-radius: 6px; outline: none; color: #33363b; background: #fff; font-size: 11px; }
+.find-row input:focus { border-color: #df9d71; }
+.find-row button { padding: 5px 7px; border-color: #e9e4dd; font-size: 10px; }
+.find-row .find-case, .find-row .find-step, .find-row .find-close { width: 24px; padding: 5px 0; }
+.find-row .find-case { font-weight: 800; }
+.find-row .find-case.active { color: #b6501c; background: #fff1e6; border-color: #f0c8a8; }
+.find-row .find-close { color: #817c76; }
+.find-count { min-width: 46px; text-align: center; color: #938d85; font-size: 10px; white-space: nowrap; }
 .section-editor { min-height: 0; overflow: auto; padding: 12px 2px 18px; border: 1px solid #e5e3df; border-radius: 0 0 7px 7px; }
 .field-label { display: grid; gap: 6px; margin: 0 10px 13px; color: #68645f; font-size: 10px; font-weight: 700; }
 .field-label input { width: 100%; border: 1px solid #dedbd6; border-radius: 7px; padding: 9px 10px; color: #25282c; background: #fff; font-size: 13px; }
