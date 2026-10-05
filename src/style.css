@@ -89,6 +89,11 @@ button.subtle { border: 0; color: #bd5c22; background: transparent; padding: 5px
 .find-row .find-case.active { color: #b6501c; background: #fff1e6; border-color: #f0c8a8; }
 .find-row .find-close { color: #817c76; }
 .find-count { min-width: 46px; text-align: center; color: #938d85; font-size: 10px; white-space: nowrap; }
+.editor-markdown { position: relative; min-height: 250px; flex: 1; display: flex; background: #fff; border-radius: 0 0 7px 7px; }
+.editor-markdown.is-searching textarea { background: transparent; }
+.find-layer { position: absolute; top: 1px; right: 1px; bottom: 1px; left: 1px; overflow: hidden; padding: 13px; color: transparent; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; pointer-events: none; font: 11px/1.65 "Cascadia Code", Consolas, "Microsoft YaHei", monospace; }
+.find-layer mark { color: transparent; background: #ffe08a; border-radius: 2px; }
+.find-layer mark.current { background: #ffab4a; }
 .section-editor { min-height: 0; overflow: auto; padding: 12px 2px 18px; border: 1px solid #e5e3df; border-radius: 0 0 7px 7px; }
 .field-label { display: grid; gap: 6px; margin: 0 10px 13px; color: #68645f; font-size: 10px; font-weight: 700; }
 .field-label input { width: 100%; border: 1px solid #dedbd6; border-radius: 7px; padding: 9px 10px; color: #25282c; background: #fff; font-size: 13px; }

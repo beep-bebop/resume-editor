@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import PdfPreview from "./PdfPreview";
 import { chartMarkdown, editableBlocks, replaceEditableBlock, tableMarkdown } from "./blocks";
 import { deleteResume, listResumes, repositoryUrl, saveResume } from "./github";
@@ -164,11 +164,13 @@ export default function App() {
   const [replaceText, setReplaceText] = useState("");
   const [matchCase, setMatchCase] = useState(false);
   const [matchIndex, setMatchIndex] = useState(0);
+  const [findGutter, setFindGutter] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const photoInput = useRef<HTMLInputElement>(null);
   const editorInput = useRef<HTMLTextAreaElement>(null);
   const findInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
+  const highlightLayer = useRef<HTMLDivElement>(null);
   const resumesRef = useRef(resumes);
   const busyRef = useRef(busy);
 
@@ -297,6 +299,29 @@ export default function App() {
     updateActive({ markdown: replaceAllMatches(active.markdown, findText, replaceText, matchCase) });
     setMatchIndex(0);
   };
+  const markdownSource = active?.markdown || "";
+  const highlightParts = useMemo(() => {
+    const parts: { text: string; match: boolean; current: boolean }[] = [];
+    let cursor = 0;
+    matches.forEach((position, index) => {
+      if (position > cursor) parts.push({ text: markdownSource.slice(cursor, position), match: false, current: false });
+      parts.push({ text: markdownSource.slice(position, position + findText.length), match: true, current: index === currentMatch });
+      cursor = position + findText.length;
+    });
+    if (cursor < markdownSource.length) parts.push({ text: markdownSource.slice(cursor), match: false, current: false });
+    return parts;
+  }, [markdownSource, matches, currentMatch, findText]);
+  // 高亮层是 textarea 的镜像，必须与文本区同滚动，并预留出编辑区滚动条的宽度，否则折行位置会错开。
+  const syncFindLayer = () => {
+    const field = editorInput.current;
+    const layer = highlightLayer.current;
+    if (!field || !layer) return;
+    layer.scrollTop = field.scrollTop;
+    layer.scrollLeft = field.scrollLeft;
+    const gutter = Math.max(0, field.offsetWidth - field.clientWidth - 2);
+    setFindGutter((current) => (current === gutter ? current : gutter));
+  };
+  useLayoutEffect(syncFindLayer, [findOpen, findText, matchCase, markdownSource]);
   const setSections = (sections: RawSection[], preamble = rawDocument.preamble) => {
     updateActive({ markdown: joinRawSections(preamble, sections) });
   };
@@ -633,16 +658,25 @@ export default function App() {
                   <button disabled={!matches.length} onClick={replaceEvery}>全部替换</button>
                 </div>
               </div>}
-              <textarea ref={editorInput} aria-label="Markdown 简历正文" value={active?.markdown || ""}
-                onChange={(event) => updateActive({ markdown: event.target.value })}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape" && findOpen) { event.preventDefault(); closeFind(); return; }
-                  if (!(event.ctrlKey || event.metaKey)) return;
-                  const key = event.key.toLowerCase();
-                  if (key === "f") { event.preventDefault(); openFind("find"); }
-                  else if (key === "h") { event.preventDefault(); openFind("replace"); }
-                }}
-                placeholder="新建或选择一份简历" spellCheck={false} disabled={!active} />
+              <div className={"editor-markdown" + (findOpen ? " is-searching" : "")}>
+                {findOpen && <div className="find-layer" ref={highlightLayer} aria-hidden="true" style={{ paddingRight: 13 + findGutter }}>
+                  {highlightParts.map((part, index) => part.match
+                    ? <mark key={index} className={part.current ? "current" : undefined}>{part.text}</mark>
+                    : <span key={index}>{part.text}</span>)}
+                  {markdownSource.endsWith("\n") ? "\u200b" : null}
+                </div>}
+                <textarea ref={editorInput} aria-label="Markdown 简历正文" value={active?.markdown || ""}
+                  onChange={(event) => updateActive({ markdown: event.target.value })}
+                  onScroll={syncFindLayer}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape" && findOpen) { event.preventDefault(); closeFind(); return; }
+                    if (!(event.ctrlKey || event.metaKey)) return;
+                    const key = event.key.toLowerCase();
+                    if (key === "f") { event.preventDefault(); openFind("find"); }
+                    else if (key === "h") { event.preventDefault(); openFind("replace"); }
+                  }}
+                  placeholder="新建或选择一份简历" spellCheck={false} disabled={!active} />
+              </div>
             </> : <div className="section-editor">
               {active ? <>
                 <label className="field-label">姓名 / 简历标题
