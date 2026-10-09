@@ -1,7 +1,7 @@
 import { ChangeEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import PdfPreview from "./PdfPreview";
 import { chartMarkdown, editableBlocks, replaceEditableBlock, tableMarkdown } from "./blocks";
-import { deleteResume, listResumes, repositoryUrl, saveResume } from "./github";
+import { deleteResume, listResumes, repositoryUrl, saveResume, uploadPdf } from "./github";
 import {
   DEFAULT_SETTINGS, displayName, fileStem, joinRawSections, parseStoredMarkdown,
   safeFileName, serializeResume, splitRawSections, type FontWeight, type RawSection, type Resume, type Settings,
@@ -154,6 +154,7 @@ export default function App() {
   const [pdfInfo, setPdfInfo] = useState<{ pages: number; widthMm: number; heightMm: number } | null>(null);
   const [pdfError, setPdfError] = useState("");
   const [rendering, setRendering] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
   const [zoom, setZoom] = useState(0.75);
   const [pendingDelete, setPendingDelete] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
@@ -412,6 +413,19 @@ export default function App() {
     finally { setBusy(false); }
   };
 
+  const downloadPdf = () => {
+    if (!pdfBlob || !active) return;
+    const pdfName = fileStem(activeFileName) + ".pdf";
+    download(pdfBlob, pdfName);
+    const value = token.trim();
+    if (!value) return;
+    setUploadingPdf(true);
+    void uploadPdf(pdfName, pdfBlob, value)
+      .then(() => setStatus("已下载 PDF 并同步到仓库 pdfs/" + pdfName + "。"))
+      .catch((error: Error) => setStatus("PDF 已下载，但同步到仓库失败：" + error.message))
+      .finally(() => setUploadingPdf(false));
+  };
+
   useEffect(() => {
     if (!autoSaveMinutes || !token.trim()) return;
     const timer = window.setInterval(() => {
@@ -555,7 +569,7 @@ export default function App() {
           <span className={"sync-state " + (activeDirty ? "is-dirty" : "")}>{activeDirty ? "尚未保存到云端" : "已保存"}</span>
           <button onClick={() => void refresh()} disabled={busy}>刷新</button>
           <button className="primary" onClick={() => void commit()} disabled={busy || !active}>保存</button>
-          <button className="dark" onClick={() => pdfBlob && download(pdfBlob, fileStem(activeFileName) + ".pdf")} disabled={!pdfBlob || rendering}>下载 PDF</button>
+          <button className="dark" onClick={downloadPdf} disabled={!pdfBlob || rendering || uploadingPdf}>{uploadingPdf ? "同步 PDF 中…" : "下载 PDF"}</button>
         </div>
       </header>
       <div className="mobile-tabs">

@@ -4,6 +4,8 @@ const owner = "beep-bebop";
 const repository = "resume-data";
 const folder = "resumes";
 const api = "https://api.github.com/repos/" + owner + "/" + repository + "/contents/" + folder;
+const pdfFolder = "pdfs";
+const pdfApi = "https://api.github.com/repos/" + owner + "/" + repository + "/contents/" + pdfFolder;
 
 type GitHubEntry = { name: string; sha: string; download_url: string | null; type: string };
 type FileResponse = { sha: string; content: string; encoding: string };
@@ -33,6 +35,14 @@ function encodeBase64(value: string): string {
   const bytes = new TextEncoder().encode(value);
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function encodeBase64Bytes(bytes: Uint8Array): string {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  }
   return btoa(binary);
 }
 
@@ -89,6 +99,26 @@ export async function saveResume(resume: Resume, token: string): Promise<Resume>
   if (!response.ok) throw new Error("提交失败：" + await errorMessage(response));
   const result = await response.json() as { content: { sha: string } };
   return { ...resume, sha: result.content.sha, committedBody: body, updatedAt: Date.now() };
+}
+
+export async function uploadPdf(fileName: string, blob: Blob, token: string): Promise<void> {
+  if (!token.trim()) throw new Error("请先填写 GitHub 令牌");
+  const url = pdfApi + "/" + encodeURIComponent(fileName);
+  const currentResponse = await fetch(url + "?ref=main", { headers: headers(token), cache: "no-store" });
+  let sha: string | undefined;
+  if (currentResponse.ok) sha = (await currentResponse.json() as FileResponse).sha;
+  else if (currentResponse.status !== 404) throw new Error("检查 PDF 失败：" + await errorMessage(currentResponse));
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { ...headers(token), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: (sha ? "Update PDF: " : "Add PDF: ") + fileName,
+      content: encodeBase64Bytes(new Uint8Array(await blob.arrayBuffer())),
+      branch: "main",
+      ...(sha ? { sha } : {}),
+    }),
+  });
+  if (!response.ok) throw new Error("PDF 上传失败：" + await errorMessage(response));
 }
 
 export async function deleteResume(resume: Resume, token: string): Promise<void> {
